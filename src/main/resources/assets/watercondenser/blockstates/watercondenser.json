@@ -1,0 +1,9 @@
+{
+  "variants": {
+    "facing=north": { "model": "watercondenser:block/watercondenser"},
+    "facing=east": { "model": "watercondenser:block/watercondenser", "y": 90},
+    "facing=south": { "model": "watercondenser:block/watercondenser", "y": 180},
+    "facing=west": { "model": "watercondenser:block/watercondenser", "y": 270}
+
+  }
+}
