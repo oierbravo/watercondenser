@@ -2,6 +2,7 @@ package com.oierbravo.watercondenser;
 
 import com.mojang.logging.LogUtils;
 import com.oierbravo.watercondenser.block.ModBlocks;
+import com.oierbravo.watercondenser.config.ModConfigCommon;
 import com.oierbravo.watercondenser.entity.ModBlockEntities;
 import com.oierbravo.watercondenser.item.ModItems;
 import net.minecraft.world.level.block.Block;
@@ -13,7 +14,9 @@ import net.minecraftforge.eventbus.api.IEventBus;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.DistExecutor;
 import net.minecraftforge.fml.InterModComms;
+import net.minecraftforge.fml.ModLoadingContext;
 import net.minecraftforge.fml.common.Mod;
+import net.minecraftforge.fml.config.ModConfig;
 import net.minecraftforge.fml.event.lifecycle.FMLCommonSetupEvent;
 import net.minecraftforge.fml.event.lifecycle.InterModEnqueueEvent;
 import net.minecraftforge.fml.event.lifecycle.InterModProcessEvent;
@@ -40,22 +43,8 @@ public class WaterCondenser
         ModItems.register(eventBus);
         ModBlockEntities.register(eventBus);
 
-        // Register the setup method for modloading
-        eventBus.addListener(this::setup);
-        /*DistExecutor.unsafeCallWhenOn(Dist.CLIENT, () -> () -> {
-            FMLJavaModLoadingContext.get().getModEventBus().addListener(ClientModEvents :: initRenderTypes);
-            FMLJavaModLoadingContext.get().getModEventBus().addListener(ClientModEvents :: initSpecialRenders);
-            return null;
-        });*/
+        ModLoadingContext.get().registerConfig(ModConfig.Type.COMMON, ModConfigCommon.SPEC, "watercondenser-common.toml");
 
-        // Register ourselves for server and other game events we are interested in
-        MinecraftForge.EVENT_BUS.register(this);
     }
 
-    private void setup(final FMLCommonSetupEvent event)
-    {
-        // some preinit code
-        LOGGER.info("HELLO FROM PREINIT");
-        LOGGER.info("DIRT BLOCK >> {}", Blocks.DIRT.getRegistryName());
-    }
 }

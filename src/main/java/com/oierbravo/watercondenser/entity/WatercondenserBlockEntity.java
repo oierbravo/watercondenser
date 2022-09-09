@@ -1,6 +1,7 @@
 package com.oierbravo.watercondenser.entity;
 
 import com.oierbravo.watercondenser.WaterCondenser;
+import com.oierbravo.watercondenser.config.ModConfigCommon;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.nbt.CompoundTag;
@@ -40,8 +41,8 @@ import java.util.stream.Stream;
 public class WatercondenserBlockEntity extends BlockEntity {
 //public class WatercondenserBlockEntity extends BlockEntity implements IFluidHandler{
 
-    private final int FLUID_CAPACITY = 1000;
-
+    private final int FLUID_CAPACITY = ModConfigCommon.CONDENSER_CAPACITY.get();
+    private static final int FLIUD_PER_TICK = ModConfigCommon.CONDENSER_FLUID_PER_TICK.get();
     private CompoundTag updateTag;
     private final FluidTank fluidTankHandler = createFluidTank();
     //private final LazyOptional<IFluidHandler> lazyFluidHandler = LazyOptional.of(() -> fluidTankHandler);
@@ -99,17 +100,7 @@ public class WatercondenserBlockEntity extends BlockEntity {
         lazyFluidHandler.invalidate();
     }
 
-    /*@Override
-    protected void saveAdditional(@NotNull CompoundTag tag) {
-        tag.put("fluid", fluidTankHandler.writeToNBT(new CompoundTag()));
-        super.saveAdditional(tag);
-    }
 
-    @Override
-    public void load(CompoundTag nbt) {
-        fluidTankHandler.readFromNBT(nbt.getCompound("fluid"));
-        super.load(nbt);
-    }*/
     @Override
     public void load(CompoundTag nbt) {
         super.load(nbt);
@@ -133,76 +124,14 @@ public class WatercondenserBlockEntity extends BlockEntity {
         if(pLevel.isClientSide()) {
             return;
         }
-        //int currentAmount = pBlockEntity.fluidTankHandler.getFluidAmount();
 
-       // FluidStack fluid = pBlockEntity.fluidTankHandler.getFluid();
-       // if(fluid.isEmpty()){
-       //     fluid =  new FluidStack(Fluids.WATER, 0);
-       // }
-        //fluid.grow(1);
-        //fluid.setAmount(currentAmount + 10);
-        //WaterCondenser.LOGGER.info("TICK Amount: " + pBlockEntity.fluidTankHandler.getFluidAmount());
-        int amount = (int)Math.floor(2 * Math.random());
-        if(amount > 500){
-            //pState.setValue()
-        }
+        int amount = (int)Math.floor(FLIUD_PER_TICK * Math.random());
+
         pBlockEntity.fluidTankHandler.fill( new FluidStack(Fluids.WATER, amount), IFluidHandler.FluidAction.EXECUTE);
-        //this.clientSync();
-        /*if(hasRecipe(pBlockEntity) && hasEnoughEnergy(pBlockEntity)) {
-            pBlockEntity.progress++;
-            extractEnergy(pBlockEntity);
-            setChanged(pLevel, pPos, pState);
-            if(pBlockEntity.progress >= pBlockEntity.maxProgress) {
-                craftItem(pBlockEntity);
-            }
-        } else {
-            pBlockEntity.resetProgress();
-            setChanged(pLevel, pPos, pState);
-        }
 
-        if(hasWaterSourceInSlot(pBlockEntity)) {
-            transferItemWaterToWaterTank(pBlockEntity);
-        }*/
     }
 
-    /*//@Override
-    public int getTanks() {
-        return this.fluidTankHandler.getTanks();
-    }
 
-    @NotNull
-    //@Override
-    public FluidStack getFluidInTank(int tank) {
-        return this.fluidTankHandler.getFluidInTank(tank);
-    }
-
-    //@Override
-    public int getTankCapacity(int tank) {
-        return this.fluidTankHandler.getTankCapacity(tank);
-    }
-
-    //@Override
-    public boolean isFluidValid(int tank, @NotNull FluidStack stack) {
-        return this.fluidTankHandler.isFluidValid(tank, stack);
-    }
-
-    //@Override
-    public int fill(FluidStack resource, IFluidHandler.FluidAction action) {
-        return this.fluidTankHandler.fill(resource, action);
-    }
-
-    @NotNull
-    //@Override
-    public FluidStack drain(FluidStack resource, IFluidHandler.FluidAction action) {
-        return this.fluidTankHandler.drain(resource, action);
-    }
-
-    @NotNull
-    //@Override
-    public FluidStack drain(int maxDrain, IFluidHandler.FluidAction action) {
-        return this.fluidTankHandler.drain(maxDrain, action);
-    }
-*/
     public IFluidHandler getTank() {
        return this.fluidTankHandler;
     }
