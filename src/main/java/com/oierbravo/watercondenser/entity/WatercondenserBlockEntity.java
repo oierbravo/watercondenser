@@ -19,14 +19,17 @@ import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.StateDefinition;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
+import net.minecraft.world.level.material.Fluid;
 import net.minecraft.world.level.material.Fluids;
 import net.minecraftforge.common.capabilities.Capability;
 import net.minecraftforge.common.util.LazyOptional;
 import net.minecraftforge.fluids.FluidStack;
 import net.minecraftforge.fluids.capability.CapabilityFluidHandler;
 import net.minecraftforge.fluids.capability.IFluidHandler;
+import net.minecraftforge.fluids.capability.IFluidHandler.FluidAction;
 import net.minecraftforge.fluids.capability.templates.FluidTank;
 
+import net.minecraftforge.registries.ForgeRegistries;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -42,7 +45,9 @@ public class WatercondenserBlockEntity extends BlockEntity {
 //public class WatercondenserBlockEntity extends BlockEntity implements IFluidHandler{
 
     private final int FLUID_CAPACITY = ModConfigCommon.CONDENSER_CAPACITY.get();
-    private static final int FLIUD_PER_TICK = ModConfigCommon.CONDENSER_FLUID_PER_TICK.get();
+    private static final int CONDENSER_TICKS_PER_CYCLE = ModConfigCommon.CONDENSER_TICKS_PER_CYCLE.get();
+    private static final int CONDENSER_MB_PER_CYCLE = ModConfigCommon.CONDENSER_MB_PER_CYCLE.get();
+    private static int CYCLE_COUNTER = 0;
     private CompoundTag updateTag;
     private final FluidTank fluidTankHandler = createFluidTank();
     //private final LazyOptional<IFluidHandler> lazyFluidHandler = LazyOptional.of(() -> fluidTankHandler);
@@ -80,6 +85,7 @@ public class WatercondenserBlockEntity extends BlockEntity {
         if (!fluidTankHandler.isEmpty()) {
             return fluidTankHandler.getFluid();
         }
+
         return new FluidStack(Fluids.WATER, 1);
     }
 
@@ -120,15 +126,19 @@ public class WatercondenserBlockEntity extends BlockEntity {
 
 
     public static void tick(Level pLevel, BlockPos pPos, BlockState pState, WatercondenserBlockEntity pBlockEntity) {
-
         if(pLevel.isClientSide()) {
             return;
         }
 
-        int amount = (int)Math.floor(FLIUD_PER_TICK * Math.random());
+        CYCLE_COUNTER++;
+        if (CYCLE_COUNTER == CONDENSER_TICKS_PER_CYCLE) {
+            CYCLE_COUNTER = 0;
 
-        pBlockEntity.fluidTankHandler.fill( new FluidStack(Fluids.WATER, amount), IFluidHandler.FluidAction.EXECUTE);
+            // TODO: The original version had this random variation; add this back with configuration
+            //int amount = (int)Math.floor(FLIUD_PER_TICK * Math.random());
 
+            pBlockEntity.fluidTankHandler.fill( new FluidStack(Fluids.WATER, CONDENSER_MB_PER_CYCLE), FluidAction.EXECUTE);
+        }
     }
 
 
