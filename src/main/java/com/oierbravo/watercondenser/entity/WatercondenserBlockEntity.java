@@ -36,6 +36,7 @@ import org.jetbrains.annotations.Nullable;
 import javax.annotation.Nonnull;
 import java.util.Objects;
 
+import java.util.Random;
 import java.util.stream.Stream;
 /**
  *  Code adapted from https://github.com/EwyBoy/ITank/blob/1.18.2/src/main/java/com/ewyboy/itank/common/content/tank/TankTile.java
@@ -47,7 +48,10 @@ public class WatercondenserBlockEntity extends BlockEntity {
     private final int FLUID_CAPACITY = ModConfigCommon.CONDENSER_CAPACITY.get();
     private static final int CONDENSER_TICKS_PER_CYCLE = ModConfigCommon.CONDENSER_TICKS_PER_CYCLE.get();
     private static final int CONDENSER_MB_PER_CYCLE = ModConfigCommon.CONDENSER_MB_PER_CYCLE.get();
+    private static final float CONDENSER_MB_MULTI_MIN = ModConfigCommon.CONDENSER_MB_MULTI_MIN.get();
+    private static final float CONDENSER_MB_MULTI_MAX = ModConfigCommon.CONDENSER_MB_MULTI_MAX.get();
     private static int CYCLE_COUNTER = 0;
+    private static Random sharedRandom = new Random();
     private CompoundTag updateTag;
     private final FluidTank fluidTankHandler = createFluidTank();
     //private final LazyOptional<IFluidHandler> lazyFluidHandler = LazyOptional.of(() -> fluidTankHandler);
@@ -134,10 +138,15 @@ public class WatercondenserBlockEntity extends BlockEntity {
         if (CYCLE_COUNTER == CONDENSER_TICKS_PER_CYCLE) {
             CYCLE_COUNTER = 0;
 
-            // TODO: The original version had this random variation; add this back with configuration
-            //int amount = (int)Math.floor(FLIUD_PER_TICK * Math.random());
+            final int amount;
+            if (CONDENSER_MB_MULTI_MIN >= 1.0f) {
+                amount = CONDENSER_MB_PER_CYCLE;
+            } else {
+                final float randomMultiplier = CONDENSER_MB_MULTI_MIN + (sharedRandom.nextFloat() * (CONDENSER_MB_MULTI_MAX - CONDENSER_MB_MULTI_MIN));
+                amount = Math.round(CONDENSER_MB_PER_CYCLE * randomMultiplier);
+            }
 
-            pBlockEntity.fluidTankHandler.fill( new FluidStack(Fluids.WATER, CONDENSER_MB_PER_CYCLE), FluidAction.EXECUTE);
+            pBlockEntity.fluidTankHandler.fill( new FluidStack(Fluids.WATER, amount), FluidAction.EXECUTE);
         }
     }
 
