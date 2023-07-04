@@ -1,6 +1,5 @@
 package com.oierbravo.watercondenser.entity;
 
-import com.oierbravo.watercondenser.WaterCondenser;
 import com.oierbravo.watercondenser.config.ModConfigCommon;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -9,30 +8,31 @@ import net.minecraft.network.Connection;
 import net.minecraft.network.protocol.Packet;
 import net.minecraft.network.protocol.game.ClientGamePacketListener;
 import net.minecraft.network.protocol.game.ClientboundBlockEntityDataPacket;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.tags.FluidTags;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.Level;
-import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
-import net.minecraft.world.level.block.state.StateDefinition;
-import net.minecraft.world.level.block.state.properties.BlockStateProperties;
+import net.minecraft.world.level.material.Fluid;
 import net.minecraft.world.level.material.Fluids;
 import net.minecraftforge.common.capabilities.Capability;
 import net.minecraftforge.common.util.LazyOptional;
 import net.minecraftforge.fluids.FluidStack;
 import net.minecraftforge.fluids.capability.CapabilityFluidHandler;
 import net.minecraftforge.fluids.capability.IFluidHandler;
+import net.minecraftforge.fluids.capability.IFluidHandler.FluidAction;
 import net.minecraftforge.fluids.capability.templates.FluidTank;
 
+import net.minecraftforge.registries.ForgeRegistries;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import org.slf4j.Logger;
 
-import javax.annotation.Nonnull;
 import java.util.Objects;
 
+import java.util.Random;
 import java.util.stream.Stream;
 /**
  *  Code adapted from https://github.com/EwyBoy/ITank/blob/1.18.2/src/main/java/com/ewyboy/itank/common/content/tank/TankTile.java
@@ -42,7 +42,14 @@ public class WatercondenserBlockEntity extends BlockEntity {
 //public class WatercondenserBlockEntity extends BlockEntity implements IFluidHandler{
 
     private final int FLUID_CAPACITY = ModConfigCommon.CONDENSER_CAPACITY.get();
-    private static final int FLIUD_PER_TICK = ModConfigCommon.CONDENSER_FLUID_PER_TICK.get();
+    private static final String CONDENSER_FLUID = ModConfigCommon.CONDENSER_FLUID.get();
+    private static final int CONDENSER_TICKS_PER_CYCLE = ModConfigCommon.CONDENSER_TICKS_PER_CYCLE.get();
+    private static final int CONDENSER_MB_PER_CYCLE = ModConfigCommon.CONDENSER_MB_PER_CYCLE.get();
+    private static final float CONDENSER_MB_MULTI_MIN = ModConfigCommon.CONDENSER_MB_MULTI_MIN.get();
+    private static final float CONDENSER_MB_MULTI_MAX = ModConfigCommon.CONDENSER_MB_MULTI_MAX.get();
+    private static int CYCLE_COUNTER = 0;
+    private static Random sharedRandom = new Random();
+    private static Fluid fluidOutput;
     private CompoundTag updateTag;
     private final FluidTank fluidTankHandler = createFluidTank();
     //private final LazyOptional<IFluidHandler> lazyFluidHandler = LazyOptional.of(() -> fluidTankHandler);
@@ -52,9 +59,21 @@ public class WatercondenserBlockEntity extends BlockEntity {
         updateTag = getTileData();
     }
 
-    private FluidTank createFluidTank() {
+    public static void verifyConfig(final Logger logger) {
+        if (fluidOutput == null) {
+            // verify and set the configured fluid
+            final ResourceLocation desiredFluid = new ResourceLocation(CONDENSER_FLUID);
+            if (ForgeRegistries.FLUIDS.containsKey(desiredFluid)) {
+                fluidOutput = ForgeRegistries.FLUIDS.getValue(desiredFluid);
+            } else {
+                logger.error("Unknown fluid '{}' in config, using default '{}' instead", CONDENSER_FLUID, ModConfigCommon.CONDENSER_FLUID_DEFAULT);
+                fluidOutput = ForgeRegistries.FLUIDS.getValue(new ResourceLocation(ModConfigCommon.CONDENSER_FLUID_DEFAULT));
+            }
+        }
+    }
 
-        return new FluidTank(FLUID_CAPACITY, (fluid -> fluid.getFluid().is(FluidTags.WATER))) {
+    private FluidTank createFluidTank() {
+        return new FluidTank(FLUID_CAPACITY, ((FluidStack fluid) -> fluid.getFluid().isSame(fluidOutput))) {
             @Override
             protected void onContentsChanged() {
                 setChanged();
@@ -80,7 +99,8 @@ public class WatercondenserBlockEntity extends BlockEntity {
         if (!fluidTankHandler.isEmpty()) {
             return fluidTankHandler.getFluid();
         }
-        return new FluidStack(Fluids.WATER, 1);
+
+        return new FluidStack(fluidOutput, 1);
     }
 
     public float getFluidProportion() {
@@ -106,6 +126,12 @@ public class WatercondenserBlockEntity extends BlockEntity {
         super.load(nbt);
         fluidTankHandler.readFromNBT(nbt);
         fluidTankHandler.setCapacity(nbt.getInt("fluid"));
+
+        if (!fluidTankHandler.getFluid().getFluid().isSame(fluidOutput)) {
+            // fluid in config differs from saved NBT, override it
+            final FluidStack changedFluidStack = new FluidStack(fluidOutput, fluidTankHandler.getFluid().getAmount());
+            fluidTankHandler.setFluid(changedFluidStack);
+        }
     }
 
     @Override
@@ -120,15 +146,24 @@ public class WatercondenserBlockEntity extends BlockEntity {
 
 
     public static void tick(Level pLevel, BlockPos pPos, BlockState pState, WatercondenserBlockEntity pBlockEntity) {
-
         if(pLevel.isClientSide()) {
             return;
         }
 
-        int amount = (int)Math.floor(FLIUD_PER_TICK * Math.random());
+        CYCLE_COUNTER++;
+        if (CYCLE_COUNTER == CONDENSER_TICKS_PER_CYCLE) {
+            CYCLE_COUNTER = 0;
 
-        pBlockEntity.fluidTankHandler.fill( new FluidStack(Fluids.WATER, amount), IFluidHandler.FluidAction.EXECUTE);
+            final int amount;
+            if (CONDENSER_MB_MULTI_MIN >= 1.0f) {
+                amount = CONDENSER_MB_PER_CYCLE;
+            } else {
+                final float randomMultiplier = CONDENSER_MB_MULTI_MIN + (sharedRandom.nextFloat() * (CONDENSER_MB_MULTI_MAX - CONDENSER_MB_MULTI_MIN));
+                amount = Math.round(CONDENSER_MB_PER_CYCLE * randomMultiplier);
+            }
 
+            pBlockEntity.fluidTankHandler.fill( new FluidStack(fluidOutput, amount), FluidAction.EXECUTE);
+        }
     }
 
 
