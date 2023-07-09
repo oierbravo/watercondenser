@@ -40,9 +40,11 @@ import java.util.stream.Stream;
  */
 public class WatercondenserBlockEntity extends BlockEntity {
 //public class WatercondenserBlockEntity extends BlockEntity implements IFluidHandler{
-    private static int cycleCounter = 0;
     private static final RandomGenerator sharedRandom = new Random();
     private static Fluid fluidOutput = null;
+    private static long lastCycleTime = -1;
+    private static int cycleCounter = 0;
+    private static boolean resetCycle = false;
     private CompoundTag updateTag;
     private final FluidTank fluidTankHandler = createFluidTank();
     //private final LazyOptional<IFluidHandler> lazyFluidHandler = LazyOptional.of(() -> fluidTankHandler);
@@ -144,9 +146,20 @@ public class WatercondenserBlockEntity extends BlockEntity {
             return;
         }
 
-        cycleCounter++;
-        if (cycleCounter == ModConfigCommon.CONDENSER_TICKS_PER_CYCLE.get()) {
-            cycleCounter = 0;
+        final long timeNow = pLevel.getDayTime();
+        if (timeNow != lastCycleTime) {
+            lastCycleTime = timeNow;
+            if (resetCycle) {
+                // A "lazy" counter reset; allows all TE's to actually get a chance to tick their cycle
+                resetCycle = false;
+                cycleCounter = 0;
+            }
+
+            cycleCounter++;
+        }
+
+        if (cycleCounter >= ModConfigCommon.CONDENSER_TICKS_PER_CYCLE.get()) {
+            resetCycle = true;
 
             final float amountMultiMin = ModConfigCommon.CONDENSER_MB_MULTI_MIN.get();
             int amount = ModConfigCommon.CONDENSER_MB_PER_CYCLE.get();
