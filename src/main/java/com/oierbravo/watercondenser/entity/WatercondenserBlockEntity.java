@@ -16,7 +16,6 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.material.Fluid;
-import net.minecraft.world.level.material.Fluids;
 import net.minecraftforge.common.capabilities.Capability;
 import net.minecraftforge.common.util.LazyOptional;
 import net.minecraftforge.fluids.FluidStack;
@@ -33,6 +32,7 @@ import org.slf4j.Logger;
 import java.util.Objects;
 
 import java.util.Random;
+import java.util.random.RandomGenerator;
 import java.util.stream.Stream;
 /**
  *  Code adapted from https://github.com/EwyBoy/ITank/blob/1.18.2/src/main/java/com/ewyboy/itank/common/content/tank/TankTile.java
@@ -40,16 +40,11 @@ import java.util.stream.Stream;
  */
 public class WatercondenserBlockEntity extends BlockEntity {
 //public class WatercondenserBlockEntity extends BlockEntity implements IFluidHandler{
-
-    private final int FLUID_CAPACITY = ModConfigCommon.CONDENSER_CAPACITY.get();
-    private static final String CONDENSER_FLUID = ModConfigCommon.CONDENSER_FLUID.get();
-    private static final int CONDENSER_TICKS_PER_CYCLE = ModConfigCommon.CONDENSER_TICKS_PER_CYCLE.get();
-    private static final int CONDENSER_MB_PER_CYCLE = ModConfigCommon.CONDENSER_MB_PER_CYCLE.get();
-    private static final float CONDENSER_MB_MULTI_MIN = ModConfigCommon.CONDENSER_MB_MULTI_MIN.get();
-    private static final float CONDENSER_MB_MULTI_MAX = ModConfigCommon.CONDENSER_MB_MULTI_MAX.get();
-    private static int CYCLE_COUNTER = 0;
-    private static Random sharedRandom = new Random();
-    private static Fluid fluidOutput;
+    private static final RandomGenerator sharedRandom = new Random();
+    private static Fluid fluidOutput = null;
+    private static long lastCycleTime = -1;
+    private static int cycleCounter = 0;
+    private static boolean resetCycle = false;
     private CompoundTag updateTag;
     private final FluidTank fluidTankHandler = createFluidTank();
     //private final LazyOptional<IFluidHandler> lazyFluidHandler = LazyOptional.of(() -> fluidTankHandler);
@@ -62,18 +57,19 @@ public class WatercondenserBlockEntity extends BlockEntity {
     public static void verifyConfig(final Logger logger) {
         if (fluidOutput == null) {
             // verify and set the configured fluid
-            final ResourceLocation desiredFluid = new ResourceLocation(CONDENSER_FLUID);
+            final String fluidResourceRaw = ModConfigCommon.CONDENSER_FLUID.get();
+            final ResourceLocation desiredFluid = new ResourceLocation(fluidResourceRaw);
             if (ForgeRegistries.FLUIDS.containsKey(desiredFluid)) {
                 fluidOutput = ForgeRegistries.FLUIDS.getValue(desiredFluid);
             } else {
-                logger.error("Unknown fluid '{}' in config, using default '{}' instead", CONDENSER_FLUID, ModConfigCommon.CONDENSER_FLUID_DEFAULT);
+                logger.error("Unknown fluid '{}' in config, using default '{}' instead", fluidResourceRaw, ModConfigCommon.CONDENSER_FLUID_DEFAULT);
                 fluidOutput = ForgeRegistries.FLUIDS.getValue(new ResourceLocation(ModConfigCommon.CONDENSER_FLUID_DEFAULT));
             }
         }
     }
 
     private FluidTank createFluidTank() {
-        return new FluidTank(FLUID_CAPACITY, ((FluidStack fluid) -> fluid.getFluid().isSame(fluidOutput))) {
+        return new FluidTank(ModConfigCommon.CONDENSER_CAPACITY.get(), ((FluidStack fluid) -> fluid.getFluid().isSame(fluidOutput))) {
             @Override
             protected void onContentsChanged() {
                 setChanged();
@@ -150,16 +146,26 @@ public class WatercondenserBlockEntity extends BlockEntity {
             return;
         }
 
-        CYCLE_COUNTER++;
-        if (CYCLE_COUNTER == CONDENSER_TICKS_PER_CYCLE) {
-            CYCLE_COUNTER = 0;
+        final long timeNow = pLevel.getDayTime();
+        if (timeNow != lastCycleTime) {
+            lastCycleTime = timeNow;
+            if (resetCycle) {
+                // A "lazy" counter reset; allows all TE's to actually get a chance to tick their cycle
+                resetCycle = false;
+                cycleCounter = 0;
+            }
 
-            final int amount;
-            if (CONDENSER_MB_MULTI_MIN >= 1.0f) {
-                amount = CONDENSER_MB_PER_CYCLE;
-            } else {
-                final float randomMultiplier = CONDENSER_MB_MULTI_MIN + (sharedRandom.nextFloat() * (CONDENSER_MB_MULTI_MAX - CONDENSER_MB_MULTI_MIN));
-                amount = Math.round(CONDENSER_MB_PER_CYCLE * randomMultiplier);
+            cycleCounter++;
+        }
+
+        if (cycleCounter >= ModConfigCommon.CONDENSER_TICKS_PER_CYCLE.get()) {
+            resetCycle = true;
+
+            final float amountMultiMin = ModConfigCommon.CONDENSER_MB_MULTI_MIN.get();
+            int amount = ModConfigCommon.CONDENSER_MB_PER_CYCLE.get();
+            if (amountMultiMin < 1.0f) {
+                final float randomMultiplier = amountMultiMin + (sharedRandom.nextFloat() * (ModConfigCommon.CONDENSER_MB_MULTI_MAX.get() - amountMultiMin));
+                amount = Math.round(ModConfigCommon.CONDENSER_MB_PER_CYCLE.get() * randomMultiplier);
             }
 
             pBlockEntity.fluidTankHandler.fill( new FluidStack(fluidOutput, amount), FluidAction.EXECUTE);
