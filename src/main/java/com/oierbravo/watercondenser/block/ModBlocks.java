@@ -18,7 +18,7 @@ import java.util.function.Supplier;
 
 public class ModBlocks {
     public static final DeferredRegister<Block> BLOCKS =
-            DeferredRegister.create(ForgeRegistries.BLOCKS, WaterCondenser.MOD_ID);
+            DeferredRegister.create(ForgeRegistries.BLOCKS, WaterCondenser.MODID);
 
     public static final RegistryObject<Block> WATERCONDENSER = registerBlock("watercondenser",
             () -> new WatercondenserBlock(BlockBehaviour.Properties.of(Material.WOOD).strength(5f).requiresCorrectToolForDrops().noOcclusion()), CreativeModeTab.TAB_MISC);

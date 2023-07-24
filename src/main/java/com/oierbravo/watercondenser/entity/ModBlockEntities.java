@@ -10,7 +10,7 @@ import net.minecraftforge.registries.RegistryObject;
 
 public class ModBlockEntities {
     public static final DeferredRegister<BlockEntityType<?>> BLOCK_ENTITIES =
-            DeferredRegister.create(ForgeRegistries.BLOCK_ENTITIES, WaterCondenser.MOD_ID);
+            DeferredRegister.create(ForgeRegistries.BLOCK_ENTITY_TYPES, WaterCondenser.MODID);
 
     public static final RegistryObject<BlockEntityType<WatercondenserBlockEntity>> WATERCONDENSER_ENTITY =
             BLOCK_ENTITIES.register("watercondenser_entity", () ->

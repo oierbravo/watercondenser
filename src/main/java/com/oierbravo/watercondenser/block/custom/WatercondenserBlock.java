@@ -18,15 +18,11 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.StateDefinition;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.minecraft.world.level.block.state.properties.DirectionProperty;
-import net.minecraft.world.level.material.Fluid;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraftforge.fluids.FluidUtil;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import java.util.List;
-//public class WatercondenserBlock extends BaseWatercondenserEntity<WatercondenserBlockEntity> implements IHasRenderType, IHasSpecialRenderer {
-//public class WatercondenserBlock extends Block implements EntityBlock {
 public class WatercondenserBlock extends BaseEntityBlock{
     public static final DirectionProperty FACING = BlockStateProperties.HORIZONTAL_FACING;
 
@@ -81,11 +77,7 @@ public class WatercondenserBlock extends BaseEntityBlock{
             BlockEntity entity = pLevel.getBlockEntity(pPos);
             if(entity instanceof WatercondenserBlockEntity) {
                 WatercondenserBlockEntity watercondenser = (WatercondenserBlockEntity) entity;
-                int amount =  watercondenser.getFluidAmount();
-                float percent = watercondenser.getFluidProportion();
-                WaterCondenser.LOGGER.info(String.format("Amount: %s , percent: %s",amount,percent));
 
-                 //WaterCondenser.LOGGER.info("Amount: " + amount + " percent: " + percent + "%");
                 boolean success = FluidUtil.interactWithFluidHandler(pPlayer,pHand,watercondenser.getFluidHandler());
                 if(success){
                     watercondenser.setChanged();
@@ -101,7 +93,7 @@ public class WatercondenserBlock extends BaseEntityBlock{
     @Nullable
     @Override
     public BlockEntity newBlockEntity(BlockPos pPos, BlockState pState) {
-        return new WatercondenserBlockEntity(pPos, pState);
+        return ModBlockEntities.WATERCONDENSER_ENTITY.get().create(pPos,pState);
     }
 
     @Nullable
