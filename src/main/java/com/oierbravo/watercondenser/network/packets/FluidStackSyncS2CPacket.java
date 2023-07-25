@@ -33,7 +33,6 @@ public class FluidStackSyncS2CPacket {
         context.enqueueWork(() -> {
             if(Minecraft.getInstance().level.getBlockEntity(pos) instanceof WatercondenserBlockEntity blockEntity) {
                 blockEntity.setFluid(this.fluidStack);
-
             }
         });
         return true;

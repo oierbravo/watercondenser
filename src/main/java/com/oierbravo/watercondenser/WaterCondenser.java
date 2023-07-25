@@ -7,7 +7,9 @@ import com.oierbravo.watercondenser.entity.ModBlockEntities;
 import com.oierbravo.watercondenser.entity.WatercondenserBlockEntity;
 import com.oierbravo.watercondenser.item.ModItems;
 import com.oierbravo.watercondenser.network.ModMessages;
+import net.minecraft.world.item.CreativeModeTabs;
 import net.minecraftforge.common.MinecraftForge;
+import net.minecraftforge.event.BuildCreativeModeTabContentsEvent;
 import net.minecraftforge.event.server.ServerAboutToStartEvent;
 import net.minecraftforge.eventbus.api.IEventBus;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
@@ -29,7 +31,6 @@ public class WaterCondenser
     {
         IEventBus eventBus = FMLJavaModLoadingContext.get().getModEventBus();
 
-
         ModBlocks.register(eventBus);
         ModItems.register(eventBus);
         ModBlockEntities.register(eventBus);
@@ -38,6 +39,14 @@ public class WaterCondenser
         ModLoadingContext.get().registerConfig(ModConfig.Type.COMMON, ModConfigCommon.SPEC, "watercondenser-common.toml");
 
         MinecraftForge.EVENT_BUS.register(this);
+        eventBus.addListener(this::addCreative);
+
+    }
+
+    private void addCreative(BuildCreativeModeTabContentsEvent event) {
+        if(event.getTabKey() == CreativeModeTabs.FUNCTIONAL_BLOCKS) {
+            event.accept(ModBlocks.WATERCONDENSER);
+        }
     }
 
     @SubscribeEvent
