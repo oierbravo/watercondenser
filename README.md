@@ -1,11 +1,13 @@
-# Water Condenser
+Water Condenser
+=================
+
 Simple water generator block.
-> Ideal for skyblock like worlds.
+- Ideal for skyblock like worlds.
 
 
 
-## Configs
-for tank capacity and mB per tick.
+Configs
+----------
 - Output fluid
 - Fluid tank capacity
 - Ticks between cycles
