@@ -2,7 +2,7 @@ package com.oierbravo.watercondenser;
 
 import com.mojang.logging.LogUtils;
 import com.oierbravo.watercondenser.block.ModBlocks;
-import com.oierbravo.watercondenser.config.ModConfigs;
+import com.oierbravo.watercondenser.config.WaterCondenserConfig;
 import com.oierbravo.watercondenser.entity.ModBlockEntities;
 import com.oierbravo.watercondenser.item.ModItems;
 import com.oierbravo.watercondenser.network.ModMessages;
@@ -11,6 +11,7 @@ import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.ModContainer;
 import net.neoforged.fml.common.Mod;
+import net.neoforged.fml.config.ModConfig;
 import net.neoforged.fml.loading.FMLEnvironment;
 import net.neoforged.neoforge.capabilities.Capabilities;
 import net.neoforged.neoforge.capabilities.RegisterCapabilitiesEvent;
@@ -28,7 +29,10 @@ public class WaterCondenser
     {
         // Register the commonSetup method for modloading
         //modEventBus.addListener(this::commonSetup);
-        ModConfigs.register(modContainer);
+
+        // Register config once NeoForge config system is ready
+        modContainer.registerConfig(ModConfig.Type.COMMON, WaterCondenserConfig.SPEC);
+        modEventBus.addListener(WaterCondenserConfig::onLoad);
 
         ModBlocks.register(modEventBus);
         ModItems.register(modEventBus);

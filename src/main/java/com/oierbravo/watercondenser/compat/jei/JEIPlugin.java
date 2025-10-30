@@ -69,7 +69,7 @@ public class JEIPlugin implements IModPlugin {
         private final IDrawable icon;
         private final IDrawable slotDrawable;
 
-        private final Fluid producedFluid = BuiltInRegistries.FLUID.get(ResourceLocation.parse(WaterCondenserConfig.CONDENSER_FLUID.get()));
+        private final Fluid producedFluid = BuiltInRegistries.FLUID.get(ResourceLocation.parse(WaterCondenserConfig.condenserFluid));
 
 
         public WaterCondenserCategory(IGuiHelper guiHelper) {
@@ -118,9 +118,9 @@ public class JEIPlugin implements IModPlugin {
             Minecraft minecraft = Minecraft.getInstance();
             Font fontRenderer = minecraft.font;
             String translationKey = "watercondenser.recipe.amount_each_tick";
-            if(WaterCondenserConfig.CONDENSER_TICKS_PER_CYCLE.get() > 1)
+            if(WaterCondenserConfig.ticksPerCycle > 1)
                 translationKey += ".plural";
-            guiGraphics.drawString(fontRenderer, Component.translatable(translationKey, WaterCondenserConfig.CONDENSER_MB_PER_CYCLE.get(), WaterCondenserConfig.CONDENSER_TICKS_PER_CYCLE.get()),43,15,0xFF808080, false);
+            guiGraphics.drawString(fontRenderer, Component.translatable(translationKey, WaterCondenserConfig.mbPerCycle, WaterCondenserConfig.ticksPerCycle),43,15,0xFF808080, false);
         }
 
         @Override
@@ -135,7 +135,7 @@ public class JEIPlugin implements IModPlugin {
 
         public static List<WaterCondenserRecipe> getRecipes() {
             List<WaterCondenserRecipe> recipes = new ArrayList<>();
-            Fluid configuredFluid = BuiltInRegistries.FLUID.get(ResourceLocation.tryParse(WaterCondenserConfig.CONDENSER_FLUID.get()));
+            Fluid configuredFluid = BuiltInRegistries.FLUID.get(ResourceLocation.tryParse(WaterCondenserConfig.condenserFluid));
 
             recipes.add(new WaterCondenserRecipe(
                     new FluidStack(configuredFluid,1000)

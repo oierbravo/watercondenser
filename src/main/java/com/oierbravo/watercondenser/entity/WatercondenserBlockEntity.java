@@ -17,6 +17,7 @@ import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.material.Fluid;
 
+import net.minecraft.world.level.material.Fluids;
 import net.neoforged.neoforge.common.util.Lazy;
 import net.neoforged.neoforge.fluids.FluidStack;
 import net.neoforged.neoforge.fluids.capability.IFluidHandler;
@@ -46,8 +47,26 @@ public class WatercondenserBlockEntity extends BlockEntity {
     public WatercondenserBlockEntity(BlockPos pWorldPosition, BlockState pBlockState) {
         super(ModBlockEntities.WATERCONDENSER_ENTITY.get(), pWorldPosition, pBlockState);
         updateTag = getPersistentData();
-        fluidOutput = BuiltInRegistries.FLUID.get( ResourceLocation.parse(WaterCondenserConfig.CONDENSER_FLUID.get()));
+
+        // --- Safe fluid initialization ---
+        // Use cached config value; if it's not yet loaded or invalid, fall back to default.
+        String fluidName = WaterCondenserConfig.condenserFluid;
+        if (fluidName == null || fluidName.isEmpty()) {
+            fluidName = WaterCondenserConfig.CONDENSER_FLUID_DEFAULT;
+        }
+
+        try {
+            fluidOutput = BuiltInRegistries.FLUID.get(ResourceLocation.parse(fluidName));
+        } catch (Exception ignored) {
+            fluidOutput = null;
+        }
+
+        // Always guarantee a valid still fluid reference
+        if (fluidOutput == null || fluidOutput == Fluids.EMPTY) {
+            fluidOutput = Fluids.WATER;
+        }
     }
+
     @Override
     public void invalidateCapabilities() {
         super.invalidateCapabilities();
@@ -55,12 +74,14 @@ public class WatercondenserBlockEntity extends BlockEntity {
     }
 
     private FluidTank createFluidTank() {
-        return new FluidTank(WaterCondenserConfig.CONDENSER_CAPACITY.get(), ((FluidStack fluid) -> fluid.getFluid().isSame(fluidOutput))) {
+        // --- Add null guard to filter predicate ---
+        return new FluidTank(WaterCondenserConfig.condenserCapacity,
+                fluid -> fluidOutput != null && fluid.getFluid().isSame(fluidOutput)) {
             @Override
             protected void onContentsChanged() {
                 setChanged();
                 assert level != null;
-                if(!level.isClientSide()) {
+                if (!level.isClientSide()) {
                     ModMessages.sendToAllClients(new FluidSyncPayload(getFluidStack(), worldPosition));
                 }
             }
@@ -100,7 +121,8 @@ public class WatercondenserBlockEntity extends BlockEntity {
             return;
         }
 
-        final long timeNow = pLevel.getDayTime();
+        // Use gameTime so it always advances even if daylight cycle is disabled
+        final long timeNow = pLevel.getGameTime();
         if (timeNow != lastCycleTime) {
             lastCycleTime = timeNow;
             if (resetCycle) {
@@ -112,18 +134,28 @@ public class WatercondenserBlockEntity extends BlockEntity {
             cycleCounter++;
         }
 
-        if (cycleCounter >= WaterCondenserConfig.CONDENSER_TICKS_PER_CYCLE.get()) {
+        if (cycleCounter >= WaterCondenserConfig.ticksPerCycle) {
             resetCycle = true;
 
-            final float amountMultiMin = WaterCondenserConfig.CONDENSER_MB_MULTI_MIN.get();
-            int amount = WaterCondenserConfig.CONDENSER_MB_PER_CYCLE.get();
-            if (amountMultiMin < 1.0f) {
-                final float randomMultiplier = amountMultiMin + (sharedRandom.nextFloat() * (WaterCondenserConfig.CONDENSER_MB_MULTI_MAX.get() - amountMultiMin));
-                amount = Math.round(WaterCondenserConfig.CONDENSER_MB_PER_CYCLE.get() * randomMultiplier);
+            final float amountMultiMin = WaterCondenserConfig.mbMultiplierMin;
+            final float amountMultiMax = WaterCondenserConfig.mbMultiplierMax;
+            int amount = WaterCondenserConfig.mbPerCycle;
+
+            // Apply rain multiplier if raining directly above
+            if (pLevel.isRainingAt(pPos.above())) {
+                amount = (int) Math.round(amount * WaterCondenserConfig.rainMultiplier);
+            } else if (amountMultiMin < 1.0f || amountMultiMax > 1.0f) {
+                // Apply random variance only when not raining
+                final float randomMultiplier = amountMultiMin +
+                        (sharedRandom.nextFloat() * (amountMultiMax - amountMultiMin));
+                amount = Math.round(amount * randomMultiplier);
             }
 
-            blockEntity.fluidTankHandler.fill( new FluidStack(fluidOutput, amount), IFluidHandler.FluidAction.EXECUTE);
+            blockEntity.fluidTankHandler.fill(new FluidStack(fluidOutput, amount), IFluidHandler.FluidAction.EXECUTE);
         }
+
+
+
     }
     public IFluidHandler getFluidHandler() {
         return this.fluidTankHandler;
@@ -146,7 +178,7 @@ public class WatercondenserBlockEntity extends BlockEntity {
     }
 
     public boolean consumeWaterBottle() {
-        int consumption = WaterCondenserConfig.CONDENSER_BOTTLE_MB_CONSUMPTION.get();
+        int consumption = WaterCondenserConfig.bottleConsumption;
         if( consumption > fluidTankHandler.getFluidAmount()){
             return false;
         }
@@ -155,7 +187,7 @@ public class WatercondenserBlockEntity extends BlockEntity {
     }
 
     public int getProgressPercent() {
-        return cycleCounter * 100 / WaterCondenserConfig.CONDENSER_TICKS_PER_CYCLE.get();
+        return cycleCounter * 100 / WaterCondenserConfig.ticksPerCycle;
     }
 
 }
